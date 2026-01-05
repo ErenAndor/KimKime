@@ -48,6 +48,11 @@ function App() {
       setParticipants(list);
     });
 
+    socket.on('raffle_updated', (data) => {
+      if (data.participants) setParticipants(data.participants);
+      if (data.adminId) setAdminId(data.adminId);
+    });
+
     socket.on('kicked', (msg) => {
       setView('landing');
       setRaffleData(null);

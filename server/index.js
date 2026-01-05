@@ -186,7 +186,35 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
-        // Optional: handle room cleanup if admin leaves or last person leaves
+
+        for (const [raffleId, raffle] of raffles.entries()) {
+            const participantIndex = raffle.participants.findIndex(p => p.id === socket.id);
+
+            if (participantIndex !== -1) {
+                // Remove the participant
+                raffle.participants.splice(participantIndex, 1);
+                console.log(`User ${socket.id} removed from raffle: ${raffleId}`);
+
+                if (raffle.participants.length === 0) {
+                    // Delete raffle if empty
+                    raffles.delete(raffleId);
+                    console.log(`Raffle ${raffleId} deleted (empty).`);
+                } else {
+                    // Reassign admin if the disconnected user was the admin
+                    if (raffle.adminId === socket.id) {
+                        raffle.adminId = raffle.participants[0].id;
+                        console.log(`New admin for ${raffleId}: ${raffle.adminId}`);
+                    }
+                    // Notify remaining participants
+                    io.to(raffleId).emit('update_participants', raffle.participants);
+                    // Also emit current raffle data to sync adminId
+                    io.to(raffleId).emit('raffle_updated', {
+                        participants: raffle.participants,
+                        adminId: raffle.adminId
+                    });
+                }
+            }
+        }
     });
 });
 
